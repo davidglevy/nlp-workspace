@@ -22,12 +22,6 @@
 
 # COMMAND ----------
 
-# MAGIC %sh
-# MAGIC cd /tmp
-# MAGIC ls
-
-# COMMAND ----------
-
 # MAGIC %pip install layoutparser torchvision pdf2image
 
 # COMMAND ----------
