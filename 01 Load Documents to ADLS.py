@@ -1,21 +1,39 @@
 # Databricks notebook source
 url_list = [
-    {"url": "https://arxiv.org/pdf/2209.00540", "name": "2209.00540.pdf"},
-    {"url": "https://arxiv.org/pdf/2209.00534", "name": "2209.00534.pdf"},
-    {"url": "https://arxiv.org/pdf/2209.00417", "name": "2209.00417.pdf"}
+    {"url": "https://arxiv.org/pdf/2209.00540"},
+    {"url": "https://arxiv.org/pdf/2209.00534"},
+    {"url": "https://arxiv.org/pdf/2209.00417"},
+    {"url": "https://arxiv.org/pdf/2209.00409"},
+    {"url": "https://arxiv.org/pdf/2209.00391"},
+    {"url": "https://arxiv.org/pdf/2209.00057"},
+    {"url": "https://arxiv.org/pdf/2209.00197"},
+    {"url": "https://arxiv.org/pdf/2209.00143"},
+    {"url": "https://arxiv.org/pdf/2208.14972"},
+    {"url": "https://arxiv.org/pdf/2208.14902"},
+    {"url": "https://arxiv.org/pdf/2208.14653"},
+    {"url": "https://arxiv.org/pdf/2208.14651"},
+    {"url": "https://arxiv.org/pdf/2208.14650"},
+    {"url": "https://arxiv.org/pdf/2208.14570"},
+    {"url": "https://arxiv.org/pdf/2208.14560"},
+    {"url": "https://arxiv.org/pdf/2208.14833"},
+    {"url": "https://arxiv.org/pdf/2208.14591"},
+    {"url": "https://arxiv.org/pdf/2208.14254"},
+    {"url": "https://arxiv.org/pdf/2208.14248"},
+    {"url": "https://arxiv.org/pdf/2208.14121"}
+
+    
+    
 ]
 
 # COMMAND ----------
 
-from pyspark.sql.types import StructType, StructField, StringType
+import re
 
-schema = StructType([
-    StructField("url", StringType(), True)
-    StructField("name", StringType(), True)
-])
+def extract_file_name(input):
+    result = re.search(".*\\/([^\\/]+)", input)
+    return result.group(1)
 
-
-df = spark.createDataFrame(url_list, schema=schema)
+print(extract_file_name("https://arxiv.org/pdf/2208.14121"))
 
 # COMMAND ----------
 
@@ -24,27 +42,23 @@ from urllib import request
 import shutil
 import os
 
+from pathlib import Path
+
+downloads_dir = "/tmp/downloads"
+dbutils.fs.mkdirs("file://" + downloads_dir)
 dbutils.fs.mkdirs("abfss://landing@dlevy0nlp0storage.dfs.core.windows.net/documents")
-dbutils.fs.mkdirs("file:///tmp/downloader")
 
-# Download URL and save to outpath.
-def downloader(url, file_name, outpath):
-    # From URL construct the destination path and filename.
-    #file_name = os.path.basename(urllib.parse.urlparse(url).path)
-    file_path = os.path.join("/tmp/downloader", file_name)
+for download in url_list:
+    file_name = extract_file_name(download['url'])
+
+    local_file = downloads_dir + os.sep + file_name
     
-    # Download and write to file.
-    with urllib.request.urlopen(url, timeout=5) as urldata, \
-      open(file_path, 'wb') as out_file:
-        shutil.copyfileobj(urldata, out_file)
     
-    # Copy the temporary file to the outpath
-    storePath = f"{outpath}/{file_name}"
-    dbutils.fs.cp(f"file:///{file_path}", storePath)
-        
+    print(f"Downloading [{download['url']}] to [{local_file}]")
+    request.urlretrieve(download['url'], local_file)
+    dbutils.fs.cp("file://" + local_file, f"abfss://landing@dlevy0nlp0storage.dfs.core.windows.net/documents/{file_name}")
+    
 
 
 
-# COMMAND ----------
 
-downloader("https://arxiv.org/pdf/2209.00417", "2209.00417.pdf", "abfss://landing@dlevy0nlp0storage.dfs.core.windows.net/documents")
