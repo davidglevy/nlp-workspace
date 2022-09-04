@@ -1,72 +1,66 @@
 # Databricks notebook source
-# MAGIC %sh
-# MAGIC cd /tmp
-# MAGIC wget https://poppler.freedesktop.org/poppler-22.09.0.tar.xz
-# MAGIC 
-# MAGIC tar xvf poppler-22.09.0.tar.xz
-
-# COMMAND ----------
-
-# MAGIC %sh
-# MAGIC apt-get install -y libnss3 libnss3-dev
-
-# COMMAND ----------
-
-# MAGIC %sh
-# MAGIC apt-get install -y libcairo2-dev libjpeg-dev libgif-dev libopenjp2-7-dev
-
-# COMMAND ----------
-
-# MAGIC %sh
-# MAGIC apt-get install -y cmake libblkid-dev e2fslibs-dev libboost-all-dev libaudit-dev
-
-# COMMAND ----------
-
-# MAGIC %sh
-# MAGIC cd /tmp
-# MAGIC ls
-
-# COMMAND ----------
-
-# MAGIC %pip install layoutparser torchvision pdf2image
-
-# COMMAND ----------
-
-# MAGIC %pip install "git+https://github.com/facebookresearch/detectron2.git@v0.5#egg=detectron2"
-
-# COMMAND ----------
-
-# MAGIC %pip install "layoutparser[ocr]"
-
-# COMMAND ----------
-
-# MAGIC %sh
-# MAGIC cd /tmp/poppler-22.09.0
-# MAGIC mkdir build
-# MAGIC cd build/
-# MAGIC cmake  -DCMAKE_BUILD_TYPE=Release   \
-# MAGIC        -DCMAKE_INSTALL_PREFIX=/usr  \
-# MAGIC        -DTESTDATADIR=$PWD/testfiles \
-# MAGIC        -DENABLE_UNSTABLE_API_ABI_HEADERS=ON \
-# MAGIC        ..
-# MAGIC 
-# MAGIC make
-# MAGIC make install
-
-# COMMAND ----------
-
-import layoutparser as lp
-import cv2
-
-# COMMAND ----------
-
-from urllib import request
-
-request.urlretrieve("https://arxiv.org/ftp/arxiv/papers/2201/2201.00013.pdf", "/tmp/2201.00013.pdf")
-
-# COMMAND ----------
-
 from pdf2image import convert_from_bytes
+import cv2
+import tempfile
+from pyspark.sql.types import ArrayType, StructType, StructField, BinaryType
+from pyspark.sql.functions import col, lit, udf
+import io
+
+#img = Image.open(fh, mode='r')
+#roi_img = img.crop(box)
+
+#img_byte_arr = io.BytesIO()
+#roi_img.save(img_byte_arr, format='PNG')
+#img_byte_arr = img_byte_arr.getvalue()
+
+
+def convertToImages(input):
+    tmp = tempfile.NamedTemporaryFile()
+    with open(tmp.name, 'wb') as f:
+        f.write(input)
+    with open(tmp.name, "rb") as f:
+        images = convert_from_bytes(input)
+    
+    i = 0
+    result = []
+    for image in images:
+        print(f"Working on image [{i}]")
+        img_byte_arr = io.BytesIO()
+        image.save(img_byte_arr, format='PNG')
+        result.append(img_byte_arr.getvalue())
+        i = i + 1
+    return result
+          
+
+                      
+
+
+# COMMAND ----------
+
+# TEST CODE - commented out.
+
+#taken = spark.table("nlp.documents.downloads").select("content").take(1)
+#content = taken[0]["content"]
+#result = convertToImages(content)
+
+# COMMAND ----------
+
+return_schema = ArrayType(BinaryType())
+
+convertToImages_udf = udf(convertToImages, return_schema)
+
+# COMMAND ----------
+
+df = spark.table("nlp.documents.downloads").limit(1)
+
+# COMMAND ----------
+
+from pyspark.sql.functions import posexplode
+df_exploded = df.withColumn("images", convertToImages_udf(col("content"))).select(col("path"), posexplode("images").alias("page", "image"))
+
+# COMMAND ----------
+
+df_exploded.write.format("delta").saveAsTable("nlp.documents.document_images")
 
 # COMMAND ----------
 
