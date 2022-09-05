@@ -8,11 +8,11 @@ display(df)
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC CREATE CATALOG nlp;
+# MAGIC CREATE CATALOG IF NOT EXISTS nlp;
 # MAGIC USE CATALOG nlp;
 # MAGIC CREATE DATABASE documents;
 # MAGIC USE documents;
 
 # COMMAND ----------
 
-df.write.format("delta").option("overwrite", True).saveAsTable("nlp.documents.downloads")
+df.write.format("delta").mode("overwrite").option("overwrite", True).saveAsTable("nlp.documents.downloads")
