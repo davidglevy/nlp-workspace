@@ -44,7 +44,8 @@ def download_audio(input):
         'site' : site,
         'scheme' : scheme,
         'query' : query,
-        'params' : params,
+# Comment out until I have an example with them non-null
+        #        'params' : params,
         'content' : data
     }
     return result
@@ -53,18 +54,24 @@ def download_audio(input):
 
 # COMMAND ----------
 
-download
-
-# COMMAND ----------
-
-from pyspark.sql.types import StructType, StructField, StringType
+from pyspark.sql.types import StructType, StructField, StringType, MapType, ArrayType, BinaryType
 
 schema = StructType([
+    StructField("path", StringType(), True),
+    StructField("file_name", StringType(), True),
     StructField("url", StringType(), False),
-    StructField("file_name", StringType(), True)
+    StructField("site", StringType(), True),
+    StructField("scheme", StringType(), True),
+    StructField("query", MapType(StringType(), ArrayType(StringType())), True),
+#    StructField("params", StringType(), True),
+    StructField("content", BinaryType(), True),
 ])
 
 df = spark.createDataFrame(url_list, schema)
+
+# COMMAND ----------
+
+df.write.format("delta").mode("overwrite").option("overwriteSchema", True).saveAsTable("nlp.documents.audio_raw")
 
 # COMMAND ----------
 
