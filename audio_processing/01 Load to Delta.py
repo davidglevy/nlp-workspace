@@ -1,11 +1,19 @@
 # Databricks notebook source
+from pyspark.sql.types import StructType, StructField, StringType, MapType, ArrayType, BinaryType
 from urllib import request
 
 url_list = [
     {"url": "https://www.americanrhetoric.com/mp3clips/politicalspeeches/jfkinaugural2.mp3"},
-    {"url": "https://www.americanrhetoric.com/mp3clips/politicalspeeches/jfkinauguralsurround.mp3"},
-    {"url": "http://openmedia.yale.edu/cgi-bin/open_yale/media_downloader.cgi?file=/courses/fall11/hist210/mp3/hist210_01_083111.mp3", "file_name": "hist210_01_083111.mp3"}
+    {"url": "https://www.americanrhetoric.com/mp3clips/politicalspeeches/jfkinauguralsurround.mp3"}#,
+    #{"url": "http://openmedia.yale.edu/cgi-bin/open_yale/media_downloader.cgi?file=/courses/fall11/hist210/mp3/hist210_01_083111.mp3", "file_name": "hist210_01_083111.mp3"}
 ]
+
+schema_load = StructType([
+    StructField("url", StringType(), False),
+    StructField("file_name", StringType(), True)
+])
+
+url_list_df = spark.createDataFrame(url_list, schema_load)
 
 # COMMAND ----------
 
@@ -21,11 +29,15 @@ def extract_file_name(input):
 print(extract_file_name("https://www.americanrhetoric.com/mp3clips/politicalspeeches/jfkinaugural2.mp3?abc=123&dfg=456"))
 
 
-def download_audio(input):
+def download_audio(input, file_name):
     
     parsed = urlparse(input)
     path = parsed.path
-    file_name = extract_file_name(input)
+    if (file_name):
+        print("File name provided")
+    else:
+        print("Extracting file name")
+        file_name = extract_file_name(input)
     url = input
     site = parsed.netloc
     scheme = parsed.scheme
@@ -33,8 +45,7 @@ def download_audio(input):
     params = parsed.params
     
     response = request.urlopen(url)
-    data = response.read()
-    
+    data = response.read()   
     
     
     result = {
@@ -50,11 +61,19 @@ def download_audio(input):
     }
     return result
 
+#for x in url_list:
+#    if 'file_name' in x:
+#        result = download_audio(x['url'], x['file_name'])
+#        print(len(result['content']))
+#    else:
+#        result = download_audio(x['url'], None)
+#        print(len(result['content']))
+
 #download = download_audio("https://www.americanrhetoric.com/mp3clips/politicalspeeches/jfkinaugural2.mp3?abc=123&dfg=456")
 
 # COMMAND ----------
 
-from pyspark.sql.types import StructType, StructField, StringType, MapType, ArrayType, BinaryType
+from pyspark.sql.functions import udf, col
 
 schema = StructType([
     StructField("path", StringType(), True),
@@ -67,11 +86,19 @@ schema = StructType([
     StructField("content", BinaryType(), True),
 ])
 
-df = spark.createDataFrame(url_list, schema)
+download_audio_udf = udf(download_audio, schema)
 
 # COMMAND ----------
 
-df.write.format("delta").mode("overwrite").option("overwriteSchema", True).saveAsTable("nlp.documents.audio_raw")
+downloaded_df = url_list_df.withColumn("downloaded", download_audio_udf(col("url"), col("file_name")))
+
+# COMMAND ----------
+
+final_df = downloaded_df.select("downloaded.path", "downloaded.file_name", "downloaded.url", "downloaded.site", "downloaded.scheme", "downloaded.query", "downloaded.content")
+
+# COMMAND ----------
+
+final_df.write.format("delta").mode("overwrite").option("overwriteSchema", True).saveAsTable("nlp.documents.audio_raw")
 
 # COMMAND ----------
 
