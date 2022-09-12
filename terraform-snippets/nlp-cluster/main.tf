@@ -34,6 +34,7 @@ resource "databricks_cluster" "shared_autoscaling" {
     pypi {
       package = "pdf2image"
     }
+
   }
   library {
     pypi {

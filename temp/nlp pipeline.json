@@ -1,0 +1,88 @@
+{
+    "job_id": 381879729090295,
+    "creator_user_name": "dlevy@databricks.com",
+    "run_as_user_name": "dlevy@databricks.com",
+    "run_as_owner": true,
+    "settings": {
+        "name": "NLP Pipeline",
+        "email_notifications": {
+            "no_alert_for_skipped_runs": false
+        },
+        "timeout_seconds": 0,
+        "max_concurrent_runs": 1,
+        "tasks": [
+            {
+                "task_key": "Download_Data_to_ADLS",
+                "notebook_task": {
+                    "notebook_path": "/Repos/dlevy@databricks.com/nlp-workspace/01 Load Documents to ADLS",
+                    "source": "WORKSPACE"
+                },
+                "existing_cluster_id": "0904-025646-kqimkxgx",
+                "timeout_seconds": 0,
+                "email_notifications": {}
+            },
+            {
+                "task_key": "Import_Files_to_Delta",
+                "depends_on": [
+                    {
+                        "task_key": "Download_Data_to_ADLS"
+                    }
+                ],
+                "notebook_task": {
+                    "notebook_path": "/Repos/dlevy@databricks.com/nlp-workspace/02 Convert to Delta",
+                    "source": "WORKSPACE"
+                },
+                "existing_cluster_id": "0904-025646-kqimkxgx",
+                "timeout_seconds": 0,
+                "email_notifications": {}
+            },
+            {
+                "task_key": "Process_into_Layers",
+                "depends_on": [
+                    {
+                        "task_key": "Import_Files_to_Delta"
+                    }
+                ],
+                "notebook_task": {
+                    "notebook_path": "/Repos/dlevy@databricks.com/nlp-workspace/03 Process into Layers",
+                    "source": "WORKSPACE"
+                },
+                "existing_cluster_id": "0904-025646-kqimkxgx",
+                "timeout_seconds": 0,
+                "email_notifications": {}
+            },
+            {
+                "task_key": "Title_Extraction",
+                "depends_on": [
+                    {
+                        "task_key": "Process_into_Layers"
+                    }
+                ],
+                "notebook_task": {
+                    "notebook_path": "/Repos/dlevy@databricks.com/nlp-workspace/04 Extract Headings - local",
+                    "source": "WORKSPACE"
+                },
+                "existing_cluster_id": "0904-025646-kqimkxgx",
+                "timeout_seconds": 0,
+                "email_notifications": {}
+            },
+            {
+                "task_key": "Show_UI_Modification",
+                "depends_on": [
+                    {
+                        "task_key": "Process_into_Layers"
+                    }
+                ],
+                "notebook_task": {
+                    "notebook_path": "/Repos/dlevy@databricks.com/nlp-workspace/04 Extract Headings",
+                    "source": "WORKSPACE"
+                },
+                "existing_cluster_id": "0904-025646-kqimkxgx",
+                "timeout_seconds": 0,
+                "email_notifications": {}
+            }
+        ],
+        "format": "MULTI_TASK"
+    },
+    "created_time": 1662337914451
+}
