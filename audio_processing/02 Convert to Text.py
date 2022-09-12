@@ -1,14 +1,5 @@
 # Databricks notebook source
-# MAGIC %sh
-# MAGIC apt-get install -y ffmpeg
-
-# COMMAND ----------
-
-# MAGIC %pip install pydub
-
-# COMMAND ----------
-
-df = spark.table("nlp.documents.audio_raw").limit(1)
+#df = spark.table("nlp.documents.audio_raw").limit(1)
 
 # COMMAND ----------
 
@@ -21,6 +12,7 @@ from pydub.silence import split_on_silence
 from urllib import request
 from io import BytesIO
 import requests
+import json
 
 from pydub import AudioSegment
 from pydub.silence import split_on_silence
@@ -62,6 +54,7 @@ def get_token(subscription_key):
         'Ocp-Apim-Subscription-Key': subscription_key
     }
     response = requests.post(fetch_token_url, headers=headers)
+    
     access_token = str(response.text)
     return access_token
 
@@ -77,8 +70,13 @@ def convert_to_text(input, key):
 
     
     response = requests.request("POST", url, headers=headers, data=input)
-    print(response)
-    return response.text
+    
+    parsed = json.loads(response.text)
+    
+    if 'DisplayText' in parsed:
+        return parsed['DisplayText']
+    else:
+        return ''
     
 # Get SaaS Key
 key = dbutils.secrets.get("saas_keys", "azure_speech")
@@ -86,17 +84,18 @@ print(f"The key is [{key}]")
     
 token = get_token(key)
 
-payload = df.select("content").take(1)[0]['content']
-print(type(payload))
-
-audio_parts = split_into_chunks(payload)
-
-x = 0
-for audio_part in audio_parts:
-    result = convert_to_text(audio_part, key)
-    print(f"Converted audio part [{x}] into: {result}")
-    x = x + 1
-    break;
+# Test Code
+#payload = df.select("content").take(1)[0]['content']
+#print(type(payload))
+#
+#audio_parts = split_into_chunks(payload)
+#
+#x = 0
+#for audio_part in audio_parts:
+#    result = convert_to_text(audio_part, key)
+#    print(f"Converted audio part [{x}] into: {result}")
+#    x = x + 1
+#    break;
     
 
 
@@ -110,12 +109,24 @@ audio_fragment_schema = ArrayType(BinaryType())
 split_into_chunks_udf = udf(split_into_chunks, audio_fragment_schema)
 convert_to_text_udf = udf(convert_to_text, StringType())
 
-df_raw = spark.table("nlp.documents.audio_raw")
+df_raw = spark.table("nlp.audio.audio_raw")
 df_chunks = df_raw.withColumn("audio_chunks", split_into_chunks_udf(col("content"))).select("url", posexplode(col("audio_chunks")).alias("chunk_index", "audio_chunk"))
-df_chunks.write.format("delta").mode("overwrite").option("overwriteSchema", True).saveAsTable("nlp.documents.audio_raw_chunks")
+#df_chunks.write.format("delta").mode("overwrite").option("overwriteSchema", True).saveAsTable("nlp.documents.audio_raw_chunks")
 
 
-#df_translated = df_chunks.withColumn("speech_as_text", convert_to_text_udf(col("audio_chunk"), lit(key)))
+df_translated = df_chunks.withColumn("speech_as_text", convert_to_text_udf(col("audio_chunk"), lit(key)))
 
-#df_translated.write.format("delta").mode("overwrite").option("overwriteSchema", True).saveAsTable("nlp.documents.audio_converted_parts")
+df_translated.write.format("delta").mode("overwrite").option("overwriteSchema", True).saveAsTable("nlp.audio.audio_converted_parts")
+
+
+# COMMAND ----------
+
+from pyspark.sql.functions import collect_list, array_join
+
+df_audio_converted_parts = spark.table("nlp.audio.audio_converted_parts")
+
+df_concatenated = df_audio_converted_parts.sort("chunk_index").groupBy("url").agg(array_join(collect_list(col('speech_as_text')), " ").alias("converted_texts"))
+
+df_concatenated.write.format("delta").mode("overwrite").option("overwriteSchema", True).saveAsTable("nlp.audio.audio_converted")
+
 

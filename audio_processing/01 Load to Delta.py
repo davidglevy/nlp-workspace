@@ -1,11 +1,16 @@
 # Databricks notebook source
+# MAGIC %sql
+# MAGIC CREATE CATALOG nlp;
+# MAGIC CREATE DATABASE nlp.audio;
+
+# COMMAND ----------
+
 from pyspark.sql.types import StructType, StructField, StringType, MapType, ArrayType, BinaryType
 from urllib import request
 
 url_list = [
-    {"url": "https://www.americanrhetoric.com/mp3clips/politicalspeeches/jfkinaugural2.mp3"},
-    {"url": "https://www.americanrhetoric.com/mp3clips/politicalspeeches/jfkinauguralsurround.mp3"}#,
-    #{"url": "http://openmedia.yale.edu/cgi-bin/open_yale/media_downloader.cgi?file=/courses/fall11/hist210/mp3/hist210_01_083111.mp3", "file_name": "hist210_01_083111.mp3"}
+    {"url": "https://www.americanrhetoric.com/mp3clipsXE/barackobama/barackobamainauguraladdressARXE.mp3"},
+    {"url": "https://www.americanrhetoric.com/mp3clips/politicalspeeches/jfkinauguralsurround.mp3"}
 ]
 
 schema_load = StructType([
@@ -98,42 +103,4 @@ final_df = downloaded_df.select("downloaded.path", "downloaded.file_name", "down
 
 # COMMAND ----------
 
-final_df.write.format("delta").mode("overwrite").option("overwriteSchema", True).saveAsTable("nlp.documents.audio_raw")
-
-# COMMAND ----------
-
-from pyspark.sql.functions import udf, col
-
-#result = {
-#        'path' : path,
-#        'file_name' : file_name,
-#        'url' : url,
-#        'site' : site,
-#        'scheme' : scheme,
-#        'query' : query,
-#        'params' : params,
-#        'content' : data
-#    }
-
-
-
-result_schema = StructType
-
-download_audio_udf = udf(download_audio, result_schema)
-
-# COMMAND ----------
-
-
-
-
-for download in url_list:
-    file_name = extract_file_name(download['url'])
-
-    local_file = downloads_dir + os.sep + file_name
-    
-    
-    print(f"Downloading [{download['url']}] to [{local_file}]")
-    request.urlretrieve(download['url'], local_file)
-    dbutils.fs.cp("file://" + local_file, f"abfss://landing@dlevy0nlp0storage.dfs.core.windows.net/documents/{file_name}")
-    
-
+final_df.write.format("delta").mode("overwrite").option("overwriteSchema", True).saveAsTable("nlp.audio.audio_raw")
