@@ -54,6 +54,10 @@ def extractTitles(input):
 
 # COMMAND ----------
 
+#print(result)
+
+# COMMAND ----------
+
 from pyspark.sql.functions import udf, col, posexplode
 from pyspark.sql.types import ArrayType, StringType
 
@@ -63,7 +67,7 @@ extractTitles_udf = udf(extractTitles, schema)
 
 # COMMAND ----------
 
-df = spark.table("nlp.documents.document_images")
+df = spark.table("nlp.documents.document_images").limit(1)
 
 # COMMAND ----------
 
@@ -76,6 +80,15 @@ df_titles.write.format("delta").option("overwrite", True).saveAsTable("nlp.docum
 
 # COMMAND ----------
 
+df = spark.table("nlp.documents.document_images").limit(1)
+df_titles = df.withColumn("titles", extractTitles_udf(col("image")))
+
+# COMMAND ----------
+
+display(df_titles)
+
+# COMMAND ----------
+
 #%sh
 #add-apt-repository ppa:alex-p/tesseract-ocr-devel
 
@@ -83,44 +96,3 @@ df_titles.write.format("delta").option("overwrite", True).saveAsTable("nlp.docum
 
 #%sh
 #apt install -y tesseract-ocr
-
-# COMMAND ----------
-
-ocr_agent = lp.TesseractAgent(languages='eng')
-
-page = 1
-#loop through each page
-my_file = open("/tmp/text_block_2201.00013.txt","w")
-
-for image in images:
-    image = np.array(image)
-    layout = model.detect(image)
-
-    #titles = lp.Layout([b for b in layout if b.type == 'Title'])
-    #for title in titles
-    
-    text_blocks = lp.Layout([b for b in layout if b.type == 'Title']) #loop through each text box on page.
-    
-    for block in text_blocks:
-        segment_image = (block
-                        .pad(left=5, right=5, top=5, bottom=5)
-                        .crop_image(image))
-        text = ocr_agent.detect(segment_image)
-        block.set(text=text, inplace=True)
-        
-    for i, txt in enumerate(text_blocks.get_texts()):
-        my_file.write(txt.strip())
-        my_file.write(f".... Page {page}\n")
-    page = page + 1
-
-my_file.close()
-
-# COMMAND ----------
-
-# MAGIC %sh
-# MAGIC ls /tmp | grep text_block
-
-# COMMAND ----------
-
-# MAGIC %sh
-# MAGIC cat /tmp/text_block_2201.00013.txt
