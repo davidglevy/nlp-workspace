@@ -1,11 +1,23 @@
 # Databricks notebook source
-#df = spark.table("nlp.documents.audio_raw").limit(1)
+# MAGIC %pip install azure-cognitiveservices-speech
+
+# COMMAND ----------
+
+import azure.cognitiveservices.speech as speechsdk
+import tempfile
+
+#speechsdk.audio.AudioInputStream
+#azure.cognitiveservices.speech.audio.AudioInputStream
+
+# COMMAND ----------
+
+df = spark.table("nlp.audio.audio_raw").limit(1)
 
 # COMMAND ----------
 
 from pydub import AudioSegment
 from pydub.silence import split_on_silence
-
+from azure.cognitiveservices.speech import SpeechRecognizer, SpeechConfig
 
 # COMMAND ----------
 
@@ -13,6 +25,7 @@ from urllib import request
 from io import BytesIO
 import requests
 import json
+import time
 
 from pydub import AudioSegment
 from pydub.silence import split_on_silence
@@ -26,8 +39,11 @@ def exportAudioSegment(input):
 
 def split_into_chunks(input):
     print(type(input))
+    
+    
+    
     sound_file = AudioSegment.from_mp3(BytesIO(input))
-    audio_chunks = split_on_silence(sound_file, min_silence_len=500, silence_thresh=-16,keep_silence=200)
+    audio_chunks = split_on_silence(sound_file, min_silence_len=2000, silence_thresh=-16,keep_silence=200)
 
     results = []
     first = True
@@ -49,6 +65,8 @@ def split_into_chunks(input):
     return results
 
 def get_token(subscription_key):
+        
+    
     fetch_token_url = 'https://australiaeast.api.cognitive.microsoft.com/sts/v1.0/issueToken'
     headers = {
         'Ocp-Apim-Subscription-Key': subscription_key
@@ -58,46 +76,98 @@ def get_token(subscription_key):
     access_token = str(response.text)
     return access_token
 
+  
+import azure.cognitiveservices.speech as speechsdk
 
 def convert_to_text(input, key):
-    url = "https://australiaeast.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1?language=en-US"
-    #url = "https://australiaeast.api.cognitive.microsoft.com/sts/v1.0/issuetoken"
     
-    headers = { 
-        "Content-type": 'audio/wav;codec="audio/pcm";',
-        'Ocp-Apim-Subscription-Key': key
-    }
+    with tempfile.NamedTemporaryFile() as tmp:
+        with open(tmp.name, 'wb') as f:
+            f.write(input)
+        
+        speech_config = speechsdk.SpeechConfig(subscription=key, region="AustraliaEast")
+        audio_input = speechsdk.AudioConfig(filename=tmp.name)
+        speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_input)
+
+    done = False
+
+    all_results = []
+
+    def handle_final_result(evt):
+        if (evt.result.reason == speechsdk.ResultReason.RecognizedSpeech):
+            text = evt.result.text
+            print(f"RECOGNIZED: {text}")
+            all_results.append(evt.result.text)
+        else:
+            print("Ignoring non-success result {}".format(evt))
+    
+    def stop_cb(evt):
+        """callback that stops continuous recognition upon receiving an event `evt`"""
+        print('CLOSING on {}'.format(evt))
+        speech_recognizer.stop_continuous_recognition()
+        nonlocal done
+        done = True
+
+    # Connect callbacks to the events fired by the speech recognizer
+    # Commented this out - noisy
+    #speech_recognizer.recognizing.connect(lambda evt: print('RECOGNIZING: {}'.format(evt)))
+    speech_recognizer.recognized.connect(handle_final_result)
+    speech_recognizer.session_started.connect(lambda evt: print('SESSION STARTED: {}'.format(evt)))
+    speech_recognizer.session_stopped.connect(lambda evt: print('SESSION STOPPED {}'.format(evt)))
+    speech_recognizer.canceled.connect(lambda evt: print('CANCELED {}'.format(evt)))
+    # stop continuous recognition on either session stopped or canceled events
+    speech_recognizer.session_stopped.connect(stop_cb)
+    speech_recognizer.canceled.connect(stop_cb)
+
+    # Start continuous speech recognition
+    speech_recognizer.start_continuous_recognition()
+    while not done:
+        time.sleep(.5)
+        
+    return all_results
 
     
-    response = requests.request("POST", url, headers=headers, data=input)
-    
-    parsed = json.loads(response.text)
-    
-    if 'DisplayText' in parsed:
-        return parsed['DisplayText']
-    else:
-        return ''
-    
+
+
+
+# COMMAND ----------
+
 # Get SaaS Key
 key = dbutils.secrets.get("saas_keys", "azure_speech")
 print(f"The key is [{key}]")
     
-token = get_token(key)
+#token = get_token(key)
 
 # Test Code
-#payload = df.select("content").take(1)[0]['content']
+payload = df.select("content").take(1)[0]['content']
 #print(type(payload))
-#
+
 #audio_parts = split_into_chunks(payload)
-#
+
+
+    
+
+# COMMAND ----------
+
 #x = 0
 #for audio_part in audio_parts:
 #    result = convert_to_text(audio_part, key)
-#    print(f"Converted audio part [{x}] into: {result}")
+#    print(f"Converted audio part [{x}] into: {result.text}")
 #    x = x + 1
 #    break;
-    
 
+# Convert entire file without chunking
+payload = df.select("content").take(1)[0]['content']
+sound_file = AudioSegment.from_mp3(BytesIO(payload))
+
+exported = BytesIO()
+sound_file.export(exported, "wav")
+to_convert = exported.read()
+
+all_results = convert_to_text(to_convert, key)
+for result in all_results:
+    print(f"Converted audio part into: {result}")
+    
 
 # COMMAND ----------
 
