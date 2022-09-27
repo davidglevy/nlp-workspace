@@ -1,11 +1,7 @@
 # Databricks notebook source
 # MAGIC %sql
-# MAGIC CREATE CATALOG nlp;
-# MAGIC CREATE DATABASE nlp.audio;
-
-# COMMAND ----------
-
-
+# MAGIC CREATE CATALOG IF NOT EXISTS nlp;
+# MAGIC CREATE DATABASE IF NOT EXISTS nlp.audio;
 
 # COMMAND ----------
 
@@ -108,3 +104,8 @@ final_df = downloaded_df.select("downloaded.path", "downloaded.file_name", "down
 # COMMAND ----------
 
 final_df.write.format("delta").mode("overwrite").option("overwriteSchema", True).saveAsTable("nlp.audio.audio_raw")
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC DESCRIBE HISTORY nlp.audio.audio_raw;

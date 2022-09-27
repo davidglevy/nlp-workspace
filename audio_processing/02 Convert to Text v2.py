@@ -1,83 +1,34 @@
 # Databricks notebook source
-# MAGIC %pip install azure-cognitiveservices-speech
-
-# COMMAND ----------
-
 import azure.cognitiveservices.speech as speechsdk
-import tempfile
-
-#speechsdk.audio.AudioInputStream
-#azure.cognitiveservices.speech.audio.AudioInputStream
-
-# COMMAND ----------
-
-df = spark.table("nlp.audio.audio_raw").limit(1)
-
-# COMMAND ----------
-
-from pydub import AudioSegment
-from pydub.silence import split_on_silence
 from azure.cognitiveservices.speech import SpeechRecognizer, SpeechConfig
-
-# COMMAND ----------
-
-from urllib import request
+from pydub import AudioSegment
+import tempfile
+#from urllib import request
 from io import BytesIO
-import requests
+#import requests
 import json
 import time
 
-from pydub import AudioSegment
-from pydub.silence import split_on_silence
+# COMMAND ----------
 
-threshold = 60 * 1000
+dbutils.widgets.dropdown("Testing", 'No', ['Yes', 'No'])
 
-def exportAudioSegment(input):
-    exported = BytesIO()
-    input.export(exported, "wav")
-    return exported.read()
+# COMMAND ----------
 
-def split_into_chunks(input):
-    print(type(input))
-    
-    
-    
-    sound_file = AudioSegment.from_mp3(BytesIO(input))
-    audio_chunks = split_on_silence(sound_file, min_silence_len=2000, silence_thresh=-16,keep_silence=200)
 
-    results = []
-    first = True
-    current = None
-    for audio_chunk in audio_chunks:
-        if first:
-            current = audio_chunk
-            first = False
-        else:
-            temp = current + audio_chunk
-            if (len(temp) >= threshold):
-                # Too big, save existing chunk and start a new one.
-                results.append(exportAudioSegment(current))
-                current = audio_chunk
-            else:
-                current = temp
-    if (current):
-        results.append(exportAudioSegment(current))
-    return results
-
-def get_token(subscription_key):
-        
-    
-    fetch_token_url = 'https://australiaeast.api.cognitive.microsoft.com/sts/v1.0/issueToken'
-    headers = {
-        'Ocp-Apim-Subscription-Key': subscription_key
-    }
-    response = requests.post(fetch_token_url, headers=headers)
-    
-    access_token = str(response.text)
-    return access_token
+#def get_token(subscription_key):
+#        
+#    
+#    fetch_token_url = 'https://australiaeast.api.cognitive.microsoft.com/sts/v1.0/issueToken'
+#    headers = {
+#        'Ocp-Apim-Subscription-Key': subscription_key
+#    }
+#    response = requests.post(fetch_token_url, headers=headers)
+#    
+#    access_token = str(response.text)
+#    return access_token
 
   
-import azure.cognitiveservices.speech as speechsdk
 
 def convert_to_text(input, key):
     
@@ -138,35 +89,23 @@ print(f"The key is [{key}]")
     
 #token = get_token(key)
 
-# Test Code
-payload = df.select("content").take(1)[0]['content']
-#print(type(payload))
+testing = dbutils.widgets.get("Testing")
 
-#audio_parts = split_into_chunks(payload)
+if (testing == 'Yes'):
+    df = spark.table("nlp.audio.audio_raw").limit(1)
 
+    payload = df.select("content").take(1)[0]['content']
+    sound_file = AudioSegment.from_mp3(BytesIO(payload))
 
-    
+    exported = BytesIO()
+    sound_file.export(exported, "wav")
+    to_convert = exported.read()
 
-# COMMAND ----------
+    all_results = convert_to_text(to_convert, key)
+    #all_results = convert_to_text(payload, key)
+    for result in all_results:
+        print(f"Converted audio part into: {result}")
 
-#x = 0
-#for audio_part in audio_parts:
-#    result = convert_to_text(audio_part, key)
-#    print(f"Converted audio part [{x}] into: {result.text}")
-#    x = x + 1
-#    break;
-
-# Convert entire file without chunking
-payload = df.select("content").take(1)[0]['content']
-sound_file = AudioSegment.from_mp3(BytesIO(payload))
-
-exported = BytesIO()
-sound_file.export(exported, "wav")
-to_convert = exported.read()
-
-all_results = convert_to_text(to_convert, key)
-for result in all_results:
-    print(f"Converted audio part into: {result}")
     
 
 # COMMAND ----------
