@@ -1,10 +1,4 @@
 # Databricks notebook source
-# MAGIC %sql
-# MAGIC CREATE CATALOG nlp;
-# MAGIC CREATE DATABASE IF NOT EXISTS nlp.audio;
-
-# COMMAND ----------
-
 from pyspark.sql.types import StructType, StructField, StringType, MapType, ArrayType, BinaryType
 from urllib import request
 
@@ -66,16 +60,6 @@ def download_audio(input, file_name):
     }
     return result
 
-#for x in url_list:
-#    if 'file_name' in x:
-#        result = download_audio(x['url'], x['file_name'])
-#        print(len(result['content']))
-#    else:
-#        result = download_audio(x['url'], None)
-#        print(len(result['content']))
-
-#download = download_audio("https://www.americanrhetoric.com/mp3clips/politicalspeeches/jfkinaugural2.mp3?abc=123&dfg=456")
-
 # COMMAND ----------
 
 from pyspark.sql.functions import udf, col
@@ -103,9 +87,12 @@ final_df = downloaded_df.select("downloaded.path", "downloaded.file_name", "down
 
 # COMMAND ----------
 
-final_df.write.format("delta").mode("overwrite").option("overwriteSchema", True).saveAsTable("nlp.audio.audio_raw")
+final_df.cre
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC DESCRIBE HISTORY nlp.audio.audio_raw;
+# MAGIC CREATE OR REFRESH LIVE TABLE nlp_raw
+# MAGIC 
+# MAGIC 
+# MAGIC #final_df.write.format("delta").mode("overwrite").option("overwriteSchema", True).saveAsTable("nlp.audio.audio_raw")
