@@ -1,4 +1,8 @@
 # Databricks notebook source
+# MAGIC %pip install azure-cognitiveservices-speech pydub
+
+# COMMAND ----------
+
 import azure.cognitiveservices.speech as speechsdk
 from azure.cognitiveservices.speech import SpeechRecognizer, SpeechConfig
 from pydub import AudioSegment
@@ -10,13 +14,6 @@ import json
 import time
 
 # COMMAND ----------
-
-dbutils.widgets.dropdown("Testing", 'No', ['Yes', 'No'])
-
-# COMMAND ----------
-
-def convert_to_text_2(input, key):
-    
 
 def convert_to_text(input, key):
     
@@ -72,56 +69,67 @@ def convert_to_text(input, key):
     while not done:
         time.sleep(.5)
         
-    return all_results
-
-    
-
-
+    return input, " ".join(all_results)
 
 # COMMAND ----------
+
+from pyspark.sql.functions import pandas_udf, PandasUDFType
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import as_completed
+import pandas as pd
+from pandas import Series
+
+def convert_to_text_temp(url, key):
+    time.sleep(5)
+    return url, "converted the text"
+
+# Lets test that we can operate on each element for one invocation.
+@pandas_udf('string', PandasUDFType.SCALAR)
+def pandas_convert_to_text(v: Series, k: Series) -> Series:
+    # TODO Ensure we have a "catch all".
+    
+    # Initialize a new ThreadPoolExecutor.
+    # For IO Bound workloads, there can be many many more threads than cores, but for this we'll limit it to 10.
+    
+    # Get all the data passed to this function.
+    urls = v.to_list()
+    keys = k.to_list()
+    
+    results_dict = {}
+    
+    n_threads = 20
+    
+    with ThreadPoolExecutor(n_threads) as executor:
+        futures = [executor.submit(convert_to_text, url, key) for url, key in zip(urls, keys)]
+
+        for future in as_completed(futures):
+                    # get the downloaded url data
+                    url, result = future.result()
+                    results_dict[url] = result
+    results = []
+    for url in urls:
+        results.append(results_dict[url])
+    
+    return pd.Series(results)
+
+# COMMAND ----------
+
+import dlt
 
 # Get SaaS Key
 key = dbutils.secrets.get("saas_keys", "azure_speech")
 print(f"The key is [{key}]")
-    
-#token = get_token(key)
 
-testing = dbutils.widgets.get("Testing")
-
-if (testing == 'Yes'):
-    df = spark.table("nlp.audio.audio_raw").limit(1)
-
-    payload = df.select("content").take(1)[0]['content']
-
-    all_results = convert_to_text(payload, key)
-
-    for result in all_results:
-        print(f"Converted audio part into: {result}")
 
     
-
-# COMMAND ----------
-
-from pyspark.sql.types import StructType, StructField, ArrayType, BinaryType, StringType
-from pyspark.sql.functions import udf, col, lit, array_join
-
-audio_fragment_schema = ArrayType(BinaryType())
-convert_to_text_udf = udf(convert_to_text, ArrayType(StringType()))
-
-
 
 # COMMAND ----------
 
 #TODO If we want to keep the "parts" before joining back together, re-instate this from the v1 version.
+from pyspark.sql.functions import array_join, lit, col
 
-df_raw = spark.table("nlp.audio.audio_raw")
-
-df_translated = df_raw.repartition(20).withColumn("speech_as_text", array_join(convert_to_text_udf(col("content"), lit(key)), " "))
-                 
-df_translated.write.format("delta").mode("overwrite").option("overwriteSchema", True).saveAsTable("nlp.audio.audio_converted_v2")
-
-
-# COMMAND ----------
-
-df_final = spark.table("nlp.audio.audio_converted")
-display(df_final)
+@dlt.table
+def nlp_converted():
+    df_raw = dlt.read("audio_raw")
+    df_translated = df_raw.withColumn("speech_as_text", pandas_convert_to_text(col("content"), lit(key)))
+    return df_translated

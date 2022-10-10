@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %sql
-# MAGIC CREATE CATALOG nlp;
+# MAGIC CREATE CATALOG IF NOT EXISTS nlp;
 # MAGIC CREATE DATABASE IF NOT EXISTS nlp.audio;
 
 # COMMAND ----------
@@ -9,23 +9,23 @@ from pyspark.sql.types import StructType, StructField, StringType, MapType, Arra
 from urllib import request
 
 url_list = [
-    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamafederalplaza.mp3", "title": "Federal Plaza Address Opposing the War in Iraq", "date": "02 Oct 2002"},
-    {"url": "https://www.americanrhetoric.com/mp3clipsXE/barackobama/barackobama2004dncARXE.mp3", "title": "Democratic National Convention Keynote Speech", "date": "27 Jul 2004"},
-    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamasenatespeechohiovotecounting.mp3", "title": "Senate Speech on Ohio Electoral Vote", "date": "06 Jan 2005"},
-    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamaknoxcommencement.mp3", "title": "Knox College Commencement Speech", "date": "04 Jun 2005"},
-    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamasenatespeechrosaparks.mp3", "title": "Senate Speech Honoring the Life of Rosa Parks", "date": "25 Oct 2005"},
-    {"url": "https://www.americanrhetoric.com/mp3clipsXE/barackobama/barackobamasenatefloorspeechpatriotactARXE.mp3", "title": "Senate Speech on the PATRIOT Act", "date": "15 Dec 2005"},
-    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamasenatespeechcorettascottking.mp3", "title": "Senate Speech Honoring the Life of Coretta Scott King", "date": "31 Jan 2006"},
-    {"url": "https://www.americanrhetoric.com/mp3clipsXE/barackobama/barackobamasenatespeechvotingrightsactARXE.mp3", "title": "Senate Speech on Voting Rights Act Renewal", "date": "20 Jul 2006"},
-    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamaexploratorycommittee.mp3", "title": "Presidential Exploratory Committee Announcement", "date": "16 Jan 2007"},
-    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamacandidacyannouncement.mp3", "title": "Presidential Candidacy Announcement", "date": "10 Feb 2007"},
-    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamabrownchapel.mp3", "title": "Brown Chapel Speech", "date": "04 Mar 2007"},
-    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamasenatespeechiraqfederalism.mp3", "title": "Senate Speech on Iraq Federalism Amendment", "date": "13 Mar 2007"},
-    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamasenatespeechiraqwar4years.mp3", "title": "Senate Speech on Iraq War After 4 Years", "date": "21 Mar 2007"},
-    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamasenatespeechimmigrationreform.mp3", "title": "Senate Speech on Comprehensive Immigration Reform", "date": "23 May 2007"},
-    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamawilsoncenter.mp3", "title": "Woodrow Wilson Center Speech", "date": "01 Aug 2007"},
-    {"url": "https://www.americanrhetoric.com/mp3clipsXE/barackobama/barackobamajeffersonjacksondinnerARXE.mp3", "title": "Speech at the Jefferson-Jackson Dinner", "date": "10 Nov 2007"},
-    {"url": "https://www.americanrhetoric.com/mp3clipsXE/barackobama/barackobamaiowacaucusspeechvictoryARXE.mp3", "title": "Iowa Caucus Victory Speech", "date": "03 Jan 2008"}#,
+    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamafederalplaza.mp3", "title": "Federal Plaza Address Opposing the War in Iraq", "date": "02 Oct 2002"}
+#    {"url": "https://www.americanrhetoric.com/mp3clipsXE/barackobama/barackobama2004dncARXE.mp3", "title": "Democratic National Convention Keynote Speech", "date": "27 Jul 2004"},
+#    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamasenatespeechohiovotecounting.mp3", "title": "Senate Speech on Ohio Electoral Vote", "date": "06 Jan 2005"},
+#    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamaknoxcommencement.mp3", "title": "Knox College Commencement Speech", "date": "04 Jun 2005"},
+#    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamasenatespeechrosaparks.mp3", "title": "Senate Speech Honoring the Life of Rosa Parks", "date": "25 Oct 2005"},
+#    {"url": "https://www.americanrhetoric.com/mp3clipsXE/barackobama/barackobamasenatefloorspeechpatriotactARXE.mp3", "title": "Senate Speech on the PATRIOT Act", "date": "15 Dec 2005"},
+#    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamasenatespeechcorettascottking.mp3", "title": "Senate Speech Honoring the Life of Coretta Scott King", "date": "31 Jan 2006"},
+#    {"url": "https://www.americanrhetoric.com/mp3clipsXE/barackobama/barackobamasenatespeechvotingrightsactARXE.mp3", "title": "Senate Speech on Voting Rights Act Renewal", "date": "20 Jul 2006"},
+#    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamaexploratorycommittee.mp3", "title": "Presidential Exploratory Committee Announcement", "date": "16 Jan 2007"},
+#    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamacandidacyannouncement.mp3", "title": "Presidential Candidacy Announcement", "date": "10 Feb 2007"},
+#    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamabrownchapel.mp3", "title": "Brown Chapel Speech", "date": "04 Mar 2007"},
+#    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamasenatespeechiraqfederalism.mp3", "title": "Senate Speech on Iraq Federalism Amendment", "date": "13 Mar 2007"},
+#    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamasenatespeechiraqwar4years.mp3", "title": "Senate Speech on Iraq War After 4 Years", "date": "21 Mar 2007"},
+#    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamasenatespeechimmigrationreform.mp3", "title": "Senate Speech on Comprehensive Immigration Reform", "date": "23 May 2007"},
+#    {"url": "https://www.americanrhetoric.com/mp3clips/barackobama/barackobamawilsoncenter.mp3", "title": "Woodrow Wilson Center Speech", "date": "01 Aug 2007"},
+#    {"url": "https://www.americanrhetoric.com/mp3clipsXE/barackobama/barackobamajeffersonjacksondinnerARXE.mp3", "title": "Speech at the Jefferson-Jackson Dinner", "date": "10 Nov 2007"},
+#    {"url": "https://www.americanrhetoric.com/mp3clipsXE/barackobama/barackobamaiowacaucusspeechvictoryARXE.mp3", "title": "Iowa Caucus Victory Speech", "date": "03 Jan 2008"}#,
 #    {"url": "https://www.americanrhetoric.com/mp3clipsXE/barackobama/barackobamainauguraladdressARXE.mp3"},
 #    {"url": "https://www.americanrhetoric.com/mp3clips/politicalspeeches/jfkinauguralsurround.mp3"}
 ]
