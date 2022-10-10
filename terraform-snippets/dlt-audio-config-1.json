@@ -1,0 +1,36 @@
+{
+    "id": "12d52dbd-b818-4c57-95e1-93d8994da61f",
+    "clusters": [
+        {
+            "label": "default",
+            "init_scripts": [
+                {
+                    "dbfs": {
+                        "destination": "dbfs:/scripts/audio_cluster_init.sh"
+                    }
+                }
+            ],
+            "num_workers": 1
+        }
+    ],
+    "development": true,
+    "continuous": false,
+    "channel": "PREVIEW",
+    "edition": "ADVANCED",
+    "photon": true,
+    "libraries": [
+        {
+            "notebook": {
+                "path": "/Repos/dlevy@databricks.com/nlp-workspace/audio_processing/06 delta live tables"
+            }
+        },
+        {
+            "notebook": {
+                "path": "/Repos/dlevy@databricks.com/nlp-workspace/audio_processing/07 DLT - Convert to Text v2"
+            }
+        }
+    ],
+    "name": "Audio Conversion",
+    "storage": "dbfs:/pipelines/12d52dbd-b818-4c57-95e1-93d8994da61f",
+    "target": "nlp_dlt"
+}
