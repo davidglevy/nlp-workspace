@@ -8,6 +8,8 @@ with open('./obama_inaugural_address.txt', encoding="utf-8") as f:
 
 print(data[0:20])
 
+
+
 df_expected = spark.createDataFrame([{'speech_text': data}])
 
 # COMMAND ----------

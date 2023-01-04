@@ -15,9 +15,6 @@ dbutils.widgets.dropdown("Testing", 'No', ['Yes', 'No'])
 
 # COMMAND ----------
 
-def convert_to_text_2(input, key):
-    
-
 def convert_to_text(input, key):
     
     # TODO Add type conversion to pipeline.
@@ -72,11 +69,7 @@ def convert_to_text(input, key):
     while not done:
         time.sleep(.5)
         
-    return all_results
-
-    
-
-
+    return input, " ".join(all_results)
 
 # COMMAND ----------
 
@@ -123,5 +116,5 @@ df_translated.write.format("delta").mode("overwrite").option("overwriteSchema", 
 
 # COMMAND ----------
 
-df_final = spark.table("nlp.audio.audio_converted")
+df_final = spark.table("nlp.audio.audio_converted_v2")
 display(df_final)
