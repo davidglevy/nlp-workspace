@@ -42,7 +42,7 @@ dbutils.fs.ls("abfss://landing@dlevy0nlp0storage.dfs.core.windows.net/test")
 # MAGIC cd /tmp/poppler-22.09.0
 # MAGIC mkdir build
 # MAGIC cd build/
-# MAGIC cmake  -DCMAKE_BUILD_TYPE=Release   \
+# MAGIC cmake  -DCMAKE_BUILD_TYPE=Release ENABLE_BOOST=OFF   \
 # MAGIC        -DCMAKE_INSTALL_PREFIX=/tmp/usr  \
 # MAGIC        -DTESTDATADIR=$PWD/testfiles \
 # MAGIC        -DENABLE_UNSTABLE_API_ABI_HEADERS=ON \
