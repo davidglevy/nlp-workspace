@@ -38,7 +38,7 @@ resource "databricks_cluster" "shared_autoscaling" {
   }
   library {
     pypi {
-      package = "git+https://github.com/facebookresearch/detectron2.git@v0.5#egg=detectron2"
+      package = "git+https://github.com/facebookresearch/detectron2.git@v0.6#egg=detectron2"
 
     }
   }
