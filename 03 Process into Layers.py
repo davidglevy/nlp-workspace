@@ -51,7 +51,7 @@ convertToImages_udf = udf(convertToImages, return_schema)
 
 # COMMAND ----------
 
-df = spark.table("nlp.documents.downloads").limit(1)
+df = spark.table("nlp.documents.downloads")
 
 # COMMAND ----------
 

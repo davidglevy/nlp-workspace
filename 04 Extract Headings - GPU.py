@@ -1,5 +1,14 @@
 # Databricks notebook source
 # MAGIC %md
+# MAGIC # Summary before Weekend
+# MAGIC I managed to get this working, the most efficient way to run this is:
+# MAGIC 
+# MAGIC 1. Ensure we use a singleton, this ensures we don't create a layoutparser or ocr processor for each loop
+# MAGIC 2. Repartition to the number of executors. This ensures we don't have concurrent requests on same GPU. If running single node, this is 1.
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## For GPU: Get the CUDA, layoutparser and torch versions.
 # MAGIC For GPU, CUDA is 11.3, so we need torch 1.10 and 
 # MAGIC 
@@ -15,12 +24,14 @@
 
 # COMMAND ----------
 
-#%sh
-#sudo apt-get install gcc g++
+# MAGIC %pip install detectron2 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu113/torch1.10/index.html
 
 # COMMAND ----------
 
-#%pip install detectron2 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu113/torch1.10/index.html
+# MAGIC %md
+# MAGIC ## For this version of detectron, we need torch 1.10 and torchvision 0.11.3
+# MAGIC 
+# MAGIC This comes with DBR 10.4 ML runtime
 
 # COMMAND ----------
 
@@ -33,15 +44,19 @@ import numpy as np
 import layoutparser as lp
 import io
 from PIL import Image
-
+import torch
 
 
 # COMMAND ----------
 
-#taken_df = spark.sql("SELECT * FROM nlp.documents.document_images WHERE path LIKE '%2208.14121'")
-taken_df = spark.sql("SELECT * FROM nlp.documents.document_images")
+taken_df = spark.sql("SELECT * FROM nlp.documents.document_images WHERE path LIKE '%2208.14121'")
 taken = taken_df.collect()
 page = taken[0]["image"]
+
+# COMMAND ----------
+
+import torch
+print(torch.__version__)
 
 # COMMAND ----------
 
@@ -147,7 +162,7 @@ class PdfExtractor(metaclass=SingletonMeta):
 
 # COMMAND ----------
 
-class PdfExtractorStd:
+class PdfExtractor():
 
     def __init__(self):
         # Initialize the model.
@@ -211,13 +226,15 @@ class PdfExtractorStd:
                 section['texts'].append(stripped)
         return sections
 
+
+
 # COMMAND ----------
 
 # TODO Shift this into a Pandas UDF function.
 
 def extractTitles(input):
     # Create the extractor
-    extractor = PdfExtractorStd()
+    extractor = PdfExtractor()
     print(f"Extractor id: {id(extractor)}")
     print(f"Input length: {len(input)}")
 
@@ -240,7 +257,7 @@ from pyspark.sql.functions import pandas_udf
 
 def extractTitlesPd(inputs: pd.Series) -> pd.Series:
 
-    extractor = PdfExtractorStd()
+    extractor = PdfExtractor()
 
     inputs_list = inputs.tolist()
 
@@ -254,9 +271,11 @@ def extractTitlesPd(inputs: pd.Series) -> pd.Series:
 
 
 
-#pages_pd = pd.Series([ page ])
-#converted_pd = extractTitlesPd(pages_pd)
-#print(converted_pd.tolist()[0])
+# COMMAND ----------
+
+# MAGIC %sh
+# MAGIC apt-get install -y tesseract-ocr
+# MAGIC #apt-get install -y libtesseract-dev
 
 # COMMAND ----------
 
@@ -278,11 +297,11 @@ schema = ArrayType(
 
 extractTitles_udf = udf(extractTitles, schema)
 
-extractTitlesPd_udf = pandas_udf(extractTitlesPd, returnType=schema)
+#extractTitlesPd_udf = pandas_udf(extractTitlesPd, returnType=schema)
 
 # COMMAND ----------
 
-page_content_df = taken_df.repartition(16).withColumn("image_content", extractTitlesPd_udf(col("image")))
+page_content_df = taken_df.repartition(1).withColumn("image_content", extractTitles_udf(col("image")))
 
 # COMMAND ----------
 
