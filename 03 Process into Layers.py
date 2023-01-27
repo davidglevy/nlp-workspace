@@ -61,3 +61,9 @@ df_exploded = df.withColumn("images", convertToImages_udf(col("content"))).selec
 # COMMAND ----------
 
 df_exploded.write.format("delta").mode("overwrite").saveAsTable("nlp.documents.document_images")
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT count(*)
+# MAGIC FROM nlp.documents.document_images;

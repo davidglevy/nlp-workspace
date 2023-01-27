@@ -30,3 +30,7 @@ SELECT path, page, section_index, section.title, section.continuation, posexplod
 FROM
 (SELECT path, page, posexplode(image_content) AS (section_index, section) from nlp.documents.pages)
 ORDER BY path, page, section_index, text_index;
+
+-- COMMAND ----------
+
+

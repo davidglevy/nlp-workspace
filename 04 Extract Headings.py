@@ -1,34 +1,4 @@
 # Databricks notebook source
-# MAGIC %md
-# MAGIC ## For GPU: Get the CUDA, layoutparser and torch versions.
-# MAGIC For GPU, CUDA is 11.3, so we need torch 1.10 and 
-# MAGIC 
-# MAGIC See https://github.com/facebookresearch/detectron2/blob/main/INSTALL.md
-# MAGIC 
-# MAGIC 
-# MAGIC     python -m pip install detectron2 -f \
-# MAGIC     https://dl.fbaipublicfiles.com/detectron2/wheels/cu113/torch1.10/index.html
-# MAGIC 
-# MAGIC ## For non-GPU clusters, use this:
-# MAGIC 
-# MAGIC pip install git+https://github.com/facebookresearch/detectron2.git@v0.6#egg=detectron2
-
-# COMMAND ----------
-
-#%sh
-#sudo apt-get install gcc g++
-
-# COMMAND ----------
-
-#%pip install detectron2 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu113/torch1.10/index.html
-
-# COMMAND ----------
-
-#%sh
-#ls -l /usr/local | grep cuda
-
-# COMMAND ----------
-
 import numpy as np
 import layoutparser as lp
 import io
